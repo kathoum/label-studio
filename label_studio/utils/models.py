@@ -518,16 +518,20 @@ class MLBackend(object):
         else:
             logger.debug('Model version hasn\'t changed: ' + str(model_version))
 
-    def make_predictions(self, task, project):
+    def make_predictions(self, tasks, project):
         self.sync(project)
-        response = self.api.predict([task], self.model_version, project)
+        is_single_task = not isinstance(tasks, list)
+        if is_single_task:
+            tasks = [tasks]
+        response = self.api.predict(tasks, self.model_version, project)
         if response.is_error:
             if response.status_code == 404:
                 logger.info('Can\'t make predictions: model is not found (probably not trained yet)')
             else:
                 logger.error('Can\'t make predictions: ML backend returns an error: ' + response.error_message)
         else:
-            return response.response['results'][0]
+            resp = response.response['results']
+            return resp[0] if is_single_task else resp
 
     def is_training(self, project):
         if self._api_exists():

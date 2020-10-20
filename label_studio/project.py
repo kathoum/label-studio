@@ -551,23 +551,30 @@ class Project(object):
         self.target_storage.remove_all()
         self.update_derived_output_schema()
 
-    def make_predictions(self, task):
-        task = deepcopy(task)
-        stored_predictions = task.get('predictions')
-        task['predictions'] = []
+    def make_predictions(self, tasks):
+        """ tasks: task or list of tasks """
+        is_single_task = not isinstance(tasks, list)
+        if is_single_task:
+            tasks = [tasks]
+        stored_tasks = tasks
+        tasks = deepcopy(tasks)
+        for task in tasks:
+            task['predictions'] = []
         try:
             for ml_backend in self.ml_backends:
                 if not ml_backend.connected:
                     continue
-                predictions = ml_backend.make_predictions(task, self)
-                predictions['created_by'] = ml_backend.model_name
-                predictions['created_date'] = datetime.now().isoformat()
-                task['predictions'].append(predictions)
+                predictions = ml_backend.make_predictions(tasks, self)
+                for task, prediction in zip(tasks, predictions):
+                    prediction['created_by'] = ml_backend.model_name
+                    prediction['created_date'] = datetime.now().isoformat()
+                    task['predictions'].append(prediction)
         except Exception as exc:
             logger.debug(exc, exc_info=True)
-        if not task['predictions'] and stored_predictions:
-            task['predictions'] = stored_predictions
-        return task
+        for task, stored_task in zip(tasks, stored_tasks):
+            if not task['predictions'] and stored_task['predictions']:
+                task['predictions'] = stored_task['predictions']
+        return tasks[0] if is_single_task else tasks
 
     def train(self):
         completions = []

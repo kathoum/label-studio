@@ -874,10 +874,9 @@ def api_predictions():
     """Send creating predictions signal to ML backend"""
     if g.project.ml_backends_connected:
         # get tasks ids without predictions
-        tasks_with_predictions = {}
-        for task_id, task in g.project.source_storage.items():
-            task_pred = g.project.make_predictions(task)
-            tasks_with_predictions[task_pred['id']] = task_pred
+        tasks = [task for key,task in g.project.source_storage.items()]
+        tasks_pred = g.project.make_predictions(tasks)
+        tasks_with_predictions = {task['id']:task for task in tasks_pred}
         g.project.source_storage.set_many(tasks_with_predictions.keys(), tasks_with_predictions.values())
         return make_response(jsonify({'details': 'Predictions done.'}), 200)
     else:
